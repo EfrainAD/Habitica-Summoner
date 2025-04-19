@@ -1,19 +1,43 @@
 require('dotenv').config()
 
-// Get values from the .env file
+// Habitica Auth
 const habiticaUserId = process.env.HABITICA_USER_ID
 const habiticaApiToken = process.env.HABITICA_API_TOKEN
 const HabiticaXClient = process.env.HABITICA_X_CLIENT
+// Todoist Auth
+const todoistApiKey = process.env.TODOIST_API_KEY
 
-// Set up Habitica API
+// Set up Habitica API URL
 const habiticaStatusURL = 'https://habitica.com/api/v3/status'
 const habiticaTaskURL = 'https://habitica.com/api/v3/tasks/user?type=todos'
 const habiticaUrl = habiticaTaskURL
-
 const habiticaHeaders = {
    'x-api-user': habiticaUserId,
    'x-api-key': habiticaApiToken,
    'x-client': HabiticaXClient,
+}
+
+// Todoist
+
+const todoistUrl = new URL('https://api.todoist.com/rest/v2/tasks')
+
+const todoistHeaders = {
+   Authorization: `Bearer ${todoistApiKey}`,
+   'Content-Type': 'application/json',
+}
+
+async function getTodoistTasks() {
+   const response = await fetch(todoistUrl, {
+      method: 'GET',
+      headers: todoistHeaders,
+   })
+
+   if (response.ok) {
+      const data = await response.json()
+      console.log(data)
+   } else {
+      console.error('Todoist API error:', response.status, response.statusText)
+   }
 }
 
 // Fetch tasks from Habitica (as an example of GET request)
@@ -31,4 +55,5 @@ async function getHabiticaTasks() {
    }
 }
 
-getHabiticaTasks()
+// getHabiticaTasks()
+getTodoistTasks()
