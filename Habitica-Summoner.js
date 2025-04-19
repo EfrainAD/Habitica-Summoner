@@ -55,7 +55,8 @@ async function getHabiticaTasks() {
 
    if (response.ok) {
       const data = await response.json()
-      console.log(data)
+      // console.log(data)
+      return data.data
    } else {
       console.log('Error fetching Habitica tasks:', response.statusText)
    }
@@ -81,12 +82,30 @@ async function getHabiticaTag(name) {
 
    return foundTag
 }
+async function getHabiticaTodoistTasks() {
+   const todoistTag = {
+      name: 'Todoist',
+      id: 'fd988064-d94b-4494-8a21-172eac28009b',
+   }
+   //  {
+   //    name: '✨ NEA Neatness',
+   //    id: '0b0dd0c2-0d1b-4265-8160-ee72bc0f8ef0',
+   // }
+   //   await getHabiticaTag('Todoist')
+   const tasks = await getHabiticaTasks()
+
+   // Filter out habitica task that don't have the todiest tag.
+   const habiticaTasks = tasks.filter((task) =>
+      task.tags.some((tag) => tag === todoistTag.id) ? true : false
+   )
+
+   return habiticaTasks
+}
 
 async function run() {
    // getHabiticaTasks()
    // getHabiticaTags()
-   const tag = await getHabiticaTag('Todoist')
-   console.log('Found Tag:', tag)
+   getHabiticaTodoistTasks()
    // getTodoistTasks()
 }
 
