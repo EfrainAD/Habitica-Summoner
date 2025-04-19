@@ -12,9 +12,9 @@ const habiticaBaseUrl = 'https://habitica.com/api/v3'
 const todoistBaseUrl = 'https://api.todoist.com/rest/v2'
 
 // Habitica API URL Calls
-const habiticaStatusURL = `${habiticaBaseUrl}/status`
-const habiticaTaskURL = `${habiticaBaseUrl}/tasks/user?type=todos`
-const habiticaUrl = habiticaTaskURL
+const habiticaStatusUrl = `${habiticaBaseUrl}/status`
+const habiticaTasksUrl = `${habiticaBaseUrl}/tasks/user?type=todos`
+const habiticaTagsUrl = `${habiticaBaseUrl}/tags`
 
 // Todoist API URL Calls
 const todoistUrl = `${todoistBaseUrl}/tasks`
@@ -48,7 +48,7 @@ async function getTodoistTasks() {
 
 // Fetch tasks from Habitica (as an example of GET request)
 async function getHabiticaTasks() {
-   const response = await fetch(habiticaUrl, {
+   const response = await fetch(habiticaTasksUrl, {
       method: 'GET',
       headers: habiticaHeaders,
    })
@@ -61,5 +61,24 @@ async function getHabiticaTasks() {
    }
 }
 
-// getHabiticaTasks()
-getTodoistTasks()
+async function getHabiticaTags() {
+   const response = await fetch(habiticaTagsUrl, {
+      method: 'GET',
+      headers: habiticaHeaders,
+   })
+
+   if (response.ok) {
+      const data = await response.json()
+      return data.data
+   } else {
+      console.log('Error fetching Habitica tasks:', response.statusText)
+   }
+}
+
+async function getHabiticaTag(name) {
+   const tags = await getHabiticaTags()
+   const foundTag = tags.find((tag) => tag.name === name)
+
+   return foundTag
+}
+
