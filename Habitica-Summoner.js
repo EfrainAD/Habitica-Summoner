@@ -82,3 +82,12 @@ async function getHabiticaTag(name) {
    return foundTag
 }
 
+async function run() {
+   // getHabiticaTasks()
+   // getHabiticaTags()
+   const tag = await getHabiticaTag('Todoist')
+   console.log('Found Tag:', tag)
+   // getTodoistTasks()
+}
+
+run()
