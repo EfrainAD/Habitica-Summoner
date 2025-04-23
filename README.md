@@ -20,3 +20,26 @@ Habitica Summoner lets you use both at once — keeping Todoist as your task man
 ## Setup
 
 This is created to be run on Google Scripts
+
+## Notes
+
+Habitica id = id in Todoist
+(completed todo is a completely different object in Todoiest. When using that object you will need to look for task_id)
+Habitica text = content in Todoist
+Habitica notes = description in Todoist
+Habitica notes = description in Todoist
+
+Habitica priority = priority in Todoist
+Habitica priority field should be named difficulty.
+Habitica enum values are:
+Trivial = 0.1,
+Easy = 1,
+Medium = 1.5,
+hard = 2
+Todoiest is:
+p4 = 1
+p3 = 2
+p2 = 3
+p1 = 4
+
+Habitica tasks are linked by storing the Todoist task's id in the notes field in Habitica's task.
