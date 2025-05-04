@@ -44,30 +44,6 @@ const todoistHeaders = {
    'Content-Type': 'application/json',
 }
 
-function updateRateLimit(responseHeaders) {
-   const limitRemainingHeader = responseHeaders.get('X-RateLimit-Remaining')
-   const limitResetHeader = responseHeaders.get('X-RateLimit-Reset')
-
-   if (limitRemainingHeader !== null) {
-      requestLimitRemaining = parseInt(limitRemainingHeader, 10)
-   }
-   if (limitResetHeader !== null) {
-      requestLimitReset = new Date(limitResetHeader).getTime()
-   }
-}
-async function waitForLimitReset() {
-   if (requestLimitRemaining !== null && requestLimitRemaining > 0) {
-      return
-   }
-
-   const now = Date.now()
-   const waitMs = requestLimitReset - now
-
-   if (waitMs > 0) {
-      await new Promise((resolve) => setTimeout(resolve, waitMs))
-   }
-}
-
 // Todoist - GET = get all Due Tasks
 async function getTodoistTasks() {
    const response = await fetch(todoistGetTasksUrl, {
@@ -99,138 +75,172 @@ async function getCompletedTodoistTasks() {
    }
 }
 
-// Habitica - GET = Get all Due Tasks
-async function getHabiticaTasks() {
-   await waitForLimitReset()
-   const response = await fetch(habiticaTasksUrl, {
-      method: 'GET',
-      headers: habiticaHeaders,
-   })
+function createHabiticaApi() {
+   // Util functions
+   function updateRateLimit(responseHeaders) {
+      const limitRemainingHeader = responseHeaders.get('X-RateLimit-Remaining')
+      const limitResetHeader = responseHeaders.get('X-RateLimit-Reset')
 
-   if (response.ok) {
-      updateRateLimit(response.headers)
-      const data = await response.json()
-      return data.data
-   } else {
-      console.log('Error fetching Habitica tasks:', response.statusText)
+      if (limitRemainingHeader !== null) {
+         requestLimitRemaining = parseInt(limitRemainingHeader, 10)
+      }
+      if (limitResetHeader !== null) {
+         requestLimitReset = new Date(limitResetHeader).getTime()
+      }
    }
-}
+   async function waitForLimitReset() {
+      if (requestLimitRemaining !== null && requestLimitRemaining > 0) {
+         return
+      }
 
-// Habitica - POST = mark a task as complete
-async function markComplete(task) {
-   await waitForLimitReset()
-   const response = await fetch(markCompleteUrl(task.id), {
-      method: 'POST',
-      headers: habiticaHeaders,
-   })
+      const now = Date.now()
+      const waitMs = requestLimitReset - now
 
-   if (response.ok) {
-      updateRateLimit(response.headers)
-
-      return { success: true }
-   } else {
-      console.log('Error fetching Habitica tasks:', response.statusText)
+      if (waitMs > 0) {
+         await new Promise((resolve) => setTimeout(resolve, waitMs))
+      }
    }
-}
 
-// Habitica - DELETE = delete a task
-async function deleteTask(task) {
-   await waitForLimitReset()
-   const response = await fetch(deleteUrl(task.id), {
-      method: 'DELETE',
-      headers: habiticaHeaders,
-   })
-
-   if (response.ok) {
-      updateRateLimit(response.headers)
-
-      return { success: true }
-   } else {
-      console.log('Error fetching Habitica tasks:', response.statusText)
-   }
-}
-
-// Habitica - Post = Create a Task
-async function addHabiticaTasks(tasks) {
-   await waitForLimitReset()
-   const priorityArray = [0.1, 1, 1.5, 2]
-   // Difficulty, options are 0.1, 1, 1.5, 2; equivalent of Trivial, Easy, Medium, Hard.
-
-   const body = []
-   for (const task of tasks) {
-      body.push({
-         text: task.content,
-         type: 'todo',
-         tags: ['fd988064-d94b-4494-8a21-172eac28009b'],
-         priority: priorityArray[task.priority - 1],
-         notes: task.id,
+   // Habitica - GET = Get all Due Tasks
+   async function getTasks() {
+      await waitForLimitReset()
+      const response = await fetch(habiticaTasksUrl, {
+         method: 'GET',
+         headers: habiticaHeaders,
       })
+
+      if (response.ok) {
+         updateRateLimit(response.headers)
+         const data = await response.json()
+         return data.data
+      } else {
+         console.log('Error fetching Habitica tasks:', response.statusText)
+      }
    }
 
-   const response = await fetch(addHabiticaTasksUrl, {
-      method: 'POST',
-      headers: habiticaHeaders,
-      body: JSON.stringify(body),
-   })
-   if (response.ok) {
-      updateRateLimit(response.headers)
-      console.log(response)
-      const data = await response.json()
-      return data
-   } else {
-      console.log('Error fetching Habitica tasks:', response.statusText)
-      console.log(response)
-   }
-}
+   // Habitica - POST = mark a task as complete
+   async function markComplete(task) {
+      await waitForLimitReset()
+      const response = await fetch(markCompleteUrl(task.id), {
+         method: 'POST',
+         headers: habiticaHeaders,
+      })
 
-// Habitica - PUT = Update a Tasks
-async function updateHabiticaTasks(task) {
-   await waitForLimitReset()
-   const response = await fetch(updateHabiticaTaskUrl(task.id), {
-      method: 'PUT',
-      headers: habiticaHeaders,
-      body: JSON.stringify({ text: task.text }),
-   })
+      if (response.ok) {
+         updateRateLimit(response.headers)
 
-   if (response.ok) {
-      updateRateLimit(response.headers)
-      const data = await response.json()
-      return data.data
-   } else {
-      console.log('Error fetching Habitica tasks:', response.statusText)
-      console.log('response:', response)
-   }
-}
-
-// Habitica - GET = Todoist Tag on Habitica
-async function getHabiticaTag(name = TODOIST_TAG) {
-   await waitForLimitReset()
-   if (todoistTag) {
-      return todoistTag
+         return { success: true }
+      } else {
+         console.log('Error fetching Habitica tasks:', response.statusText)
+      }
    }
 
-   const response = await fetch(habiticaTagsUrl, {
-      method: 'GET',
-      headers: habiticaHeaders,
-   })
+   // Habitica - DELETE = delete a task
+   async function deleteTask(task) {
+      await waitForLimitReset()
+      const response = await fetch(deleteUrl(task.id), {
+         method: 'DELETE',
+         headers: habiticaHeaders,
+      })
 
-   if (response.ok) {
-      updateRateLimit(response.headers)
+      if (response.ok) {
+         updateRateLimit(response.headers)
 
-      const data = await response.json()
-      const tags = data.data
-      todoistTag = tags.find((tag) => tag.name === name)
+         return { success: true }
+      } else {
+         console.log('Error fetching Habitica tasks:', response.statusText)
+      }
+   }
 
-      return todoistTag
-   } else {
-      console.log('Error fetching Habitica tasks:', response.statusText)
+   // Habitica - Post = Create a Task
+   async function addTasks(tasks) {
+      await waitForLimitReset()
+      const priorityArray = [0.1, 1, 1.5, 2]
+      // Difficulty, options are 0.1, 1, 1.5, 2; equivalent of Trivial, Easy, Medium, Hard.
+
+      const body = []
+      for (const task of tasks) {
+         body.push({
+            text: task.content,
+            type: 'todo',
+            tags: ['fd988064-d94b-4494-8a21-172eac28009b'],
+            priority: priorityArray[task.priority - 1],
+            notes: task.id,
+         })
+      }
+
+      const response = await fetch(addHabiticaTasksUrl, {
+         method: 'POST',
+         headers: habiticaHeaders,
+         body: JSON.stringify(body),
+      })
+      if (response.ok) {
+         updateRateLimit(response.headers)
+
+         const data = await response.json()
+         return data
+      } else {
+         console.log('Error fetching Habitica tasks:', response.statusText)
+      }
+   }
+
+   // Habitica - PUT = Update a Tasks
+   async function updateTasks(task) {
+      await waitForLimitReset()
+      const response = await fetch(updateHabiticaTaskUrl(task.id), {
+         method: 'PUT',
+         headers: habiticaHeaders,
+         body: JSON.stringify({ text: task.text }),
+      })
+
+      if (response.ok) {
+         updateRateLimit(response.headers)
+         const data = await response.json()
+         return data.data
+      } else {
+         console.log('Error fetching Habitica tasks:', response.statusText)
+      }
+   }
+
+   // Habitica - GET = Todoist Tag on Habitica
+   async function getTag(name = TODOIST_TAG) {
+      await waitForLimitReset()
+      if (todoistTag) {
+         return todoistTag
+      }
+
+      const response = await fetch(habiticaTagsUrl, {
+         method: 'GET',
+         headers: habiticaHeaders,
+      })
+
+      if (response.ok) {
+         updateRateLimit(response.headers)
+
+         const data = await response.json()
+         const tags = data.data
+         todoistTag = tags.find((tag) => tag.name === name)
+
+         return todoistTag
+      } else {
+         console.log('Error fetching Habitica tasks:', response.statusText)
+      }
+   }
+
+   return {
+      getTasks,
+      markComplete,
+      deleteTask,
+      addTasks,
+      updateTasks,
+      getTag,
    }
 }
 
 // Habitica - Get all Habitica task that is connected to Todoiest Task's
-async function getHabiticaTodoistTasks() {
-   todoistTag = await getHabiticaTag()
-   const tasks = await getHabiticaTasks()
+async function getHabiticaTodoistTasks(habiticaApi) {
+   todoistTag = await habiticaApi.getTag()
+   const tasks = await habiticaApi.getTasks()
 
    // Filter out habitica task that don't have the todiest tag.
    const habiticaTasks = tasks.filter((task) =>
@@ -240,7 +250,15 @@ async function getHabiticaTodoistTasks() {
    return habiticaTasks
 }
 
+function objectfyH(habiticaDueTasks) {
+   return habiticaDueTasks.reduce((acc, task) => {
+      acc[task.notes] = task
+      return acc
+   }, {})
+}
+
 async function run() {
+   const habiticaApi = createHabiticaApi()
    // Action Stacks
    const addToHabiticaStack = []
    const updateHabiticaStack = []
@@ -248,11 +266,8 @@ async function run() {
    const markCompleteHabiticaStack = []
 
    // Get H Todo Tasks
-   const habiticaDueTasks = await getHabiticaTodoistTasks()
-   const HabiticaDueTasksObj = habiticaDueTasks.reduce((acc, task) => {
-      acc[task.notes] = task
-      return acc
-   }, {})
+   const habiticaDueTasks = await getHabiticaTodoistTasks(habiticaApi)
+   const HabiticaDueTasksObj = objectfyH(habiticaDueTasks)
 
    // Get T Todo Task for Completed and Un-completed
    const uncompleted = await getTodoistTasks()
@@ -296,19 +311,19 @@ async function run() {
    //--// Do updates on habitica
    // Add Task to Haitica
    if (addToHabiticaStack.length > 0) {
-      await addHabiticaTasks(addToHabiticaStack)
+      await habiticaApi.addTasks(addToHabiticaStack)
    }
    // Mark Haitica Taslk as completed
    for (const task of markCompleteHabiticaStack) {
-      await markComplete(task)
+      await habiticaApi.markComplete(task)
    }
    // Delete Task on Habitica of task that are no longer on Todoiest (That have not been completed.)
    for (const task of removeHabiticaStack) {
-      await deleteTask(task)
+      await habiticaApi.deleteTask(task)
    }
    // synce task text/content from Todoist task to Habitica task
    for (const task of updateHabiticaStack) {
-      await updateHabiticaTasks(task)
+      await habiticaApi.updateTasks(task)
    }
 }
 
