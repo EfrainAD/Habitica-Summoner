@@ -1,42 +1,18 @@
 require('dotenv').config()
 
-let todoistTag = null
 const TODOIST_TAG = 'Todoist'
 
-// Habitica Auth
+// ENV - Habitica Auth
 const habiticaUserId = process.env.HABITICA_USER_ID
 const habiticaApiToken = process.env.HABITICA_API_TOKEN
 const HabiticaXClient = process.env.HABITICA_X_CLIENT
-// Todoist Auth
+// ENV - Todoist Auth
 const todoistApiKey = process.env.TODOIST_API_KEY
-
-// Habitica Rate Limits
-let requestLimitRemaining = null
-let requestLimitReset = null
-
-// Habitica API URL
-const habiticaBaseUrl = 'https://habitica.com/api/v3'
-
-const habiticaTasksUrl = `${habiticaBaseUrl}/tasks/user?type=todos`
-const updateHabiticaTaskUrl = (taskId) => `${habiticaBaseUrl}/tasks/${taskId}`
-const addHabiticaTasksUrl = `${habiticaBaseUrl}/tasks/user`
-const habiticaTagsUrl = `${habiticaBaseUrl}/tags`
-const markCompleteUrl = (taskId) =>
-   `${habiticaBaseUrl}/tasks/${taskId}/score/up`
-const deleteUrl = (taskId) => `${habiticaBaseUrl}/tasks/${taskId}`
 
 // Todoist API URL Calls
 const todoistGetTasksUrl = `https://api.todoist.com/rest/v2/tasks`
 const getCompletedTodoistTasksUrl =
    'https://api.todoist.com/sync/v9/completed/get_all'
-
-// Habatica API Headers
-const habiticaHeaders = {
-   'x-api-user': habiticaUserId,
-   'x-api-key': habiticaApiToken,
-   'x-client': HabiticaXClient,
-   'Content-Type': 'application/json',
-}
 
 // Todoist API Headers
 const todoistHeaders = {
@@ -76,6 +52,28 @@ async function getCompletedTodoistTasks() {
 }
 
 function createHabiticaApi() {
+   const base = 'https://habitica.com/api/v3'
+   const habiticaHeaders = {
+      'x-api-user': habiticaUserId,
+      'x-api-key': habiticaApiToken,
+      'x-client': HabiticaXClient,
+      'Content-Type': 'application/json',
+   }
+   let todoistTag = null
+   // Habitica Rate Limits
+   let requestLimitRemaining = null
+   let requestLimitReset = null
+
+   // Habitica API URL
+   const habiticaUrls = {
+      getTasks: `${base}/tasks/user?type=todos`,
+      updateTask: (taskId) => `${base}/tasks/${taskId}`,
+      addTasks: `${base}/tasks/user`,
+      getTags: `${base}/tags`,
+      markTaskComplete: (taskId) => `${base}/tasks/${taskId}/score/up`,
+      deleteTask: (taskId) => `${base}/tasks/${taskId}`,
+   }
+
    // Util functions
    function updateRateLimit(responseHeaders) {
       const limitRemainingHeader = responseHeaders.get('X-RateLimit-Remaining')
@@ -104,7 +102,7 @@ function createHabiticaApi() {
    // Habitica - GET = Get all Due Tasks
    async function getTasks() {
       await waitForLimitReset()
-      const response = await fetch(habiticaTasksUrl, {
+      const response = await fetch(habiticaUrls.getTasks, {
          method: 'GET',
          headers: habiticaHeaders,
       })
@@ -121,7 +119,7 @@ function createHabiticaApi() {
    // Habitica - POST = mark a task as complete
    async function markComplete(task) {
       await waitForLimitReset()
-      const response = await fetch(markCompleteUrl(task.id), {
+      const response = await fetch(habiticaUrls.markTaskComplete(task.id), {
          method: 'POST',
          headers: habiticaHeaders,
       })
@@ -138,7 +136,7 @@ function createHabiticaApi() {
    // Habitica - DELETE = delete a task
    async function deleteTask(task) {
       await waitForLimitReset()
-      const response = await fetch(deleteUrl(task.id), {
+      const response = await fetch(habiticaUrls.deleteTask(task.id), {
          method: 'DELETE',
          headers: habiticaHeaders,
       })
@@ -169,7 +167,7 @@ function createHabiticaApi() {
          })
       }
 
-      const response = await fetch(addHabiticaTasksUrl, {
+      const response = await fetch(habiticaUrls.addTasks, {
          method: 'POST',
          headers: habiticaHeaders,
          body: JSON.stringify(body),
@@ -187,7 +185,7 @@ function createHabiticaApi() {
    // Habitica - PUT = Update a Tasks
    async function updateTasks(task) {
       await waitForLimitReset()
-      const response = await fetch(updateHabiticaTaskUrl(task.id), {
+      const response = await fetch(habiticaUrls.updateTask(task.id), {
          method: 'PUT',
          headers: habiticaHeaders,
          body: JSON.stringify({ text: task.text }),
@@ -209,7 +207,7 @@ function createHabiticaApi() {
          return todoistTag
       }
 
-      const response = await fetch(habiticaTagsUrl, {
+      const response = await fetch(habiticaUrls.getTags, {
          method: 'GET',
          headers: habiticaHeaders,
       })
