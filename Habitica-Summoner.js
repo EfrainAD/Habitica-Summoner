@@ -9,46 +9,56 @@ const HabiticaXClient = process.env.HABITICA_X_CLIENT
 // ENV - Todoist Auth
 const todoistApiKey = process.env.TODOIST_API_KEY
 
-// Todoist API URL Calls
-const todoistGetTasksUrl = `https://api.todoist.com/rest/v2/tasks`
-const getCompletedTodoistTasksUrl =
-   'https://api.todoist.com/sync/v9/completed/get_all'
-
-// Todoist API Headers
-const todoistHeaders = {
-   Authorization: `Bearer ${todoistApiKey}`,
-   'Content-Type': 'application/json',
-}
-
-// Todoist - GET = get all Due Tasks
-async function getTodoistTasks() {
-   const response = await fetch(todoistGetTasksUrl, {
-      method: 'GET',
-      headers: todoistHeaders,
-   })
-
-   if (response.ok) {
-      const data = await response.json()
-      return data
-   } else {
-      console.error('Todoist API error:', response.status, response.statusText)
+function createTodoistApi() {
+   const todoistHeaders = {
+      Authorization: `Bearer ${todoistApiKey}`,
+      'Content-Type': 'application/json',
    }
-}
-
-// Todoist - POST = get all checked off Tasks
-async function getCompletedTodoistTasks() {
-   const response = await fetch(getCompletedTodoistTasksUrl, {
-      method: 'POST',
-      headers: todoistHeaders,
-      body: JSON.stringify({ resource_types: ['items'] }),
-   })
-
-   if (response.ok) {
-      const data = await response.json()
-      return data.items
-   } else {
-      console.error('Todoist API error:', response.status, response.statusText)
+   const todoistUrls = {
+      getUncompletedTasks: `https://api.todoist.com/rest/v2/tasks`,
+      getCompletedTasks: 'https://api.todoist.com/sync/v9/completed/get_all',
    }
+
+   // Todoist - GET = get all Due Tasks
+   async function getTodoistTasks() {
+      const response = await fetch(todoistUrls.getUncompletedTasks, {
+         method: 'GET',
+         headers: todoistHeaders,
+      })
+
+      if (response.ok) {
+         const data = await response.json()
+         return data
+      } else {
+         console.error(
+            'Todoist API error:',
+            response.status,
+            response.statusText
+         )
+      }
+   }
+
+   // Todoist - POST = get all checked off Tasks
+   async function getCompletedTodoistTasks() {
+      const response = await fetch(todoistUrls.getCompletedTasks, {
+         method: 'POST',
+         headers: todoistHeaders,
+         body: JSON.stringify({ resource_types: ['items'] }),
+      })
+
+      if (response.ok) {
+         const data = await response.json()
+         return data.items
+      } else {
+         console.error(
+            'Todoist API error:',
+            response.status,
+            response.statusText
+         )
+      }
+   }
+
+   return { getTodoistTasks, getCompletedTodoistTasks }
 }
 
 function createHabiticaApi() {
@@ -237,7 +247,7 @@ function createHabiticaApi() {
 
 // Habitica - Get all Habitica task that is connected to Todoiest Task's
 async function getHabiticaTodoistTasks(habiticaApi) {
-   todoistTag = await habiticaApi.getTag()
+   const todoistTag = await habiticaApi.getTag()
    const tasks = await habiticaApi.getTasks()
 
    // Filter out habitica task that don't have the todiest tag.
@@ -257,6 +267,7 @@ function objectfyH(habiticaDueTasks) {
 
 async function run() {
    const habiticaApi = createHabiticaApi()
+   const todoistApi = createTodoistApi()
    // Action Stacks
    const addToHabiticaStack = []
    const updateHabiticaStack = []
@@ -268,8 +279,8 @@ async function run() {
    const HabiticaDueTasksObj = objectfyH(habiticaDueTasks)
 
    // Get T Todo Task for Completed and Un-completed
-   const uncompleted = await getTodoistTasks()
-   const completed = await getCompletedTodoistTasks()
+   const uncompleted = await todoistApi.getTodoistTasks()
+   const completed = await todoistApi.getCompletedTodoistTasks()
    const uncompletedObj = uncompleted.reduce((acc, task) => {
       acc[task.id] = task
       return acc
