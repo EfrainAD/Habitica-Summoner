@@ -23,6 +23,7 @@ const addHabiticaTasksUrl = `${habiticaBaseUrl}/tasks/user`
 const habiticaTagsUrl = `${habiticaBaseUrl}/tags`
 const markCompleteUrl = (taskId) =>
    `${habiticaBaseUrl}/tasks/${taskId}/score/up`
+const deleteUrl = (taskId) => `${habiticaBaseUrl}/tasks/${taskId}`
 
 // Todoist API URL Calls
 const todoistGetTasksUrl = `https://api.todoist.com/rest/v2/tasks`
@@ -120,6 +121,23 @@ async function markComplete(task) {
    await waitForLimitReset()
    const response = await fetch(markCompleteUrl(task.id), {
       method: 'POST',
+      headers: habiticaHeaders,
+   })
+
+   if (response.ok) {
+      updateRateLimit(response.headers)
+
+      return { success: true }
+   } else {
+      console.log('Error fetching Habitica tasks:', response.statusText)
+   }
+}
+
+// Habitica - DELETE = delete a task
+async function deleteTask(task) {
+   await waitForLimitReset()
+   const response = await fetch(deleteUrl(task.id), {
+      method: 'DELETE',
       headers: habiticaHeaders,
    })
 
@@ -275,8 +293,6 @@ async function run() {
       }
    }
 
-   console.log(removeHabiticaStack)
-
    //--// Do updates on habitica
    // Add Task to Haitica
    if (addToHabiticaStack.length > 0) {
@@ -285,6 +301,10 @@ async function run() {
    // Mark Haitica Taslk as completed
    for (const task of markCompleteHabiticaStack) {
       await markComplete(task)
+   }
+   // Delete Task on Habitica of task that are no longer on Todoiest (That have not been completed.)
+   for (const task of removeHabiticaStack) {
+      await deleteTask(task)
    }
    // synce task text/content from Todoist task to Habitica task
    for (const task of updateHabiticaStack) {
