@@ -226,6 +226,7 @@ async function run() {
    // Action Stacks
    const addToHabiticaStack = []
    const updateHabiticaStack = []
+   const removeHabiticaStack = []
    const markCompleteHabiticaStack = []
 
    // Get H Todo Tasks
@@ -238,6 +239,10 @@ async function run() {
    // Get T Todo Task for Completed and Un-completed
    const uncompleted = await getTodoistTasks()
    const completed = await getCompletedTodoistTasks()
+   const uncompletedObj = uncompleted.reduce((acc, task) => {
+      acc[task.id] = task
+      return acc
+   }, {})
 
    // For completed task, check them off on Habitica
    for (const task of completed) {
@@ -262,6 +267,15 @@ async function run() {
          })
       }
    }
+
+   // Find the Habitica Task that need to be removed
+   for (const task of habiticaDueTasks) {
+      if (!uncompletedObj[task.notes]) {
+         removeHabiticaStack.push(task)
+      }
+   }
+
+   console.log(removeHabiticaStack)
 
    //--// Do updates on habitica
    // Add Task to Haitica
