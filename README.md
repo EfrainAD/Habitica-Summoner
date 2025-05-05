@@ -2,7 +2,7 @@
 
 Summon your Todoist tasks into Habitica's Todo!
 
-**Habitica Summoner** connects your Todoist and Habitica accounts, automatically creating matching tasks in Habitica based on your Todoist list.  
+**Habitica Summoner** connects your Todoist and Habitica accounts, automatically sync your Todoist's tasks to your Habitica's account.
 Manage all your to-do tasks in Todoist — and get Habitica rewords for them.
 
 ## Features
@@ -23,8 +23,8 @@ This is created to be run on Google Scripts
 
 ## Notes
 
-Habitica id = id in Todoist
-(completed todo is a completely different object in Todoiest. When using that object you will need to look for task_id)
+Habitica and Todoist task id field is 'id'
+(Task id for completed task in Todoist is different. The completed task and active task are completely different object in Todoiest. When looking at completed tasks, you need to use 'task_id' instead of 'id')
 Habitica text = content in Todoist
 Habitica notes = description in Todoist
 Habitica notes = description in Todoist
