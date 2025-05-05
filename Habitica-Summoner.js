@@ -258,11 +258,20 @@ async function getHabiticaTodoistTasks(habiticaApi) {
    return habiticaTasks
 }
 
-function objectfyH(habiticaDueTasks) {
-   return habiticaDueTasks.reduce((acc, task) => {
-      acc[task.notes] = task
-      return acc
-   }, {})
+// Tasks Todoist id is used to track/map tasks
+const indexById = {
+   habitica: function (habiticaTasks) {
+      return habiticaTasks.reduce((acc, task) => {
+         acc[task.notes] = task
+         return acc
+      }, {})
+   },
+   todoist: function (todoistTasks) {
+      return todoistTasks.reduce((acc, task) => {
+         acc[task.id] = task
+         return acc
+      }, {})
+   },
 }
 
 async function run() {
@@ -276,20 +285,17 @@ async function run() {
 
    // Get H Todo Tasks
    const habiticaDueTasks = await getHabiticaTodoistTasks(habiticaApi)
-   const HabiticaDueTasksObj = objectfyH(habiticaDueTasks)
+   const HabiticaDueTasksMap = indexById.habitica(habiticaDueTasks)
 
    // Get T Todo Task for Completed and Un-completed
    const uncompleted = await todoistApi.getTodoistTasks()
    const completed = await todoistApi.getCompletedTodoistTasks()
-   const uncompletedObj = uncompleted.reduce((acc, task) => {
-      acc[task.id] = task
-      return acc
-   }, {})
+   const uncompletedMap = indexById.todoist(uncompleted)
 
    // For completed task, check them off on Habitica
    for (const task of completed) {
       const { task_id: id } = task
-      const habiticaTask = HabiticaDueTasksObj[id]
+      const habiticaTask = HabiticaDueTasksMap[id]
 
       if (habiticaTask) {
          markCompleteHabiticaStack.push(habiticaTask)
@@ -298,13 +304,13 @@ async function run() {
 
    for (const task of uncompleted) {
       // Does it Need to be Created on Habitica?
-      if (!HabiticaDueTasksObj[task.id]) {
+      if (!HabiticaDueTasksMap[task.id]) {
          addToHabiticaStack.push(task)
       }
       // Does the task need to be updated on Habitica.
-      else if (task.content !== HabiticaDueTasksObj[task.id].text) {
+      else if (task.content !== HabiticaDueTasksMap[task.id].text) {
          updateHabiticaStack.push({
-            id: HabiticaDueTasksObj[task.id].id,
+            id: HabiticaDueTasksMap[task.id].id,
             text: task.content,
          })
       }
@@ -312,7 +318,7 @@ async function run() {
 
    // Find the Habitica Task that need to be removed
    for (const task of habiticaDueTasks) {
-      if (!uncompletedObj[task.notes]) {
+      if (!uncompletedMap[task.notes]) {
          removeHabiticaStack.push(task)
       }
    }
