@@ -9,6 +9,36 @@ const HabiticaXClient = process.env.HABITICA_X_CLIENT
 // ENV - Todoist Auth
 const todoistApiKey = process.env.TODOIST_API_KEY
 
+function createHabiticaRateLimiter() {
+   let requestLimitRemaining = null
+   let requestLimitReset = null
+
+   function update(responseHeaders) {
+      const limitRemainingHeader = responseHeaders.get('X-RateLimit-Remaining')
+      const limitResetHeader = responseHeaders.get('X-RateLimit-Reset')
+
+      if (limitRemainingHeader !== null) {
+         requestLimitRemaining = parseInt(limitRemainingHeader, 10)
+      }
+      if (limitResetHeader !== null) {
+         requestLimitReset = new Date(limitResetHeader).getTime()
+      }
+   }
+   async function wait() {
+      if (requestLimitRemaining !== null && requestLimitRemaining > 0) {
+         return
+      }
+
+      const now = Date.now()
+      const waitMs = requestLimitReset - now
+
+      if (waitMs > 0) {
+         await new Promise((resolve) => setTimeout(resolve, waitMs))
+      }
+   }
+   return { update, wait }
+}
+
 function createTodoistApi() {
    const todoistHeaders = {
       Authorization: `Bearer ${todoistApiKey}`,
@@ -69,10 +99,8 @@ function createHabiticaApi() {
       'x-client': HabiticaXClient,
       'Content-Type': 'application/json',
    }
+   const rateLimiter = createHabiticaRateLimiter()
    let todoistTag = null
-   // Habitica Rate Limits
-   let requestLimitRemaining = null
-   let requestLimitReset = null
 
    // Habitica API URL
    const habiticaUrls = {
@@ -84,41 +112,16 @@ function createHabiticaApi() {
       deleteTask: (taskId) => `${base}/tasks/${taskId}`,
    }
 
-   // Util functions
-   function updateRateLimit(responseHeaders) {
-      const limitRemainingHeader = responseHeaders.get('X-RateLimit-Remaining')
-      const limitResetHeader = responseHeaders.get('X-RateLimit-Reset')
-
-      if (limitRemainingHeader !== null) {
-         requestLimitRemaining = parseInt(limitRemainingHeader, 10)
-      }
-      if (limitResetHeader !== null) {
-         requestLimitReset = new Date(limitResetHeader).getTime()
-      }
-   }
-   async function waitForLimitReset() {
-      if (requestLimitRemaining !== null && requestLimitRemaining > 0) {
-         return
-      }
-
-      const now = Date.now()
-      const waitMs = requestLimitReset - now
-
-      if (waitMs > 0) {
-         await new Promise((resolve) => setTimeout(resolve, waitMs))
-      }
-   }
-
    // Habitica - GET = Get all Due Tasks
    async function getTasks() {
-      await waitForLimitReset()
+      await rateLimiter.wait()
       const response = await fetch(habiticaUrls.getTasks, {
          method: 'GET',
          headers: habiticaHeaders,
       })
 
       if (response.ok) {
-         updateRateLimit(response.headers)
+         rateLimiter.update(response.headers)
          const data = await response.json()
          return data.data
       } else {
@@ -128,14 +131,14 @@ function createHabiticaApi() {
 
    // Habitica - POST = mark a task as complete
    async function markComplete(task) {
-      await waitForLimitReset()
+      await rateLimiter.wait()
       const response = await fetch(habiticaUrls.markTaskComplete(task.id), {
          method: 'POST',
          headers: habiticaHeaders,
       })
 
       if (response.ok) {
-         updateRateLimit(response.headers)
+         rateLimiter.update(response.headers)
 
          return { success: true }
       } else {
@@ -145,14 +148,14 @@ function createHabiticaApi() {
 
    // Habitica - DELETE = delete a task
    async function deleteTask(task) {
-      await waitForLimitReset()
+      await rateLimiter.wait()
       const response = await fetch(habiticaUrls.deleteTask(task.id), {
          method: 'DELETE',
          headers: habiticaHeaders,
       })
 
       if (response.ok) {
-         updateRateLimit(response.headers)
+         rateLimiter.update(response.headers)
 
          return { success: true }
       } else {
@@ -162,7 +165,7 @@ function createHabiticaApi() {
 
    // Habitica - Post = Create a Task
    async function addTasks(tasks) {
-      await waitForLimitReset()
+      await rateLimiter.wait()
       const priorityArray = [0.1, 1, 1.5, 2]
       // Difficulty, options are 0.1, 1, 1.5, 2; equivalent of Trivial, Easy, Medium, Hard.
 
@@ -183,7 +186,7 @@ function createHabiticaApi() {
          body: JSON.stringify(body),
       })
       if (response.ok) {
-         updateRateLimit(response.headers)
+         rateLimiter.update(response.headers)
 
          const data = await response.json()
          return data
@@ -194,7 +197,7 @@ function createHabiticaApi() {
 
    // Habitica - PUT = Update a Tasks
    async function updateTasks(task) {
-      await waitForLimitReset()
+      await rateLimiter.wait()
       const response = await fetch(habiticaUrls.updateTask(task.id), {
          method: 'PUT',
          headers: habiticaHeaders,
@@ -202,7 +205,7 @@ function createHabiticaApi() {
       })
 
       if (response.ok) {
-         updateRateLimit(response.headers)
+         rateLimiter.update(response.headers)
          const data = await response.json()
          return data.data
       } else {
@@ -212,7 +215,7 @@ function createHabiticaApi() {
 
    // Habitica - GET = Todoist Tag on Habitica
    async function getTag(name = TODOIST_TAG) {
-      await waitForLimitReset()
+      await rateLimiter.wait()
       if (todoistTag) {
          return todoistTag
       }
@@ -223,7 +226,7 @@ function createHabiticaApi() {
       })
 
       if (response.ok) {
-         updateRateLimit(response.headers)
+         rateLimiter.update(response.headers)
 
          const data = await response.json()
          const tags = data.data
