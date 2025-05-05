@@ -280,68 +280,56 @@ const indexById = {
 async function run() {
    const habiticaApi = createHabiticaApi()
    const todoistApi = createTodoistApi()
-   // Action Stacks
-   const addToHabiticaStack = []
-   const updateHabiticaStack = []
-   const removeHabiticaStack = []
-   const markCompleteHabiticaStack = []
 
-   // Get H Todo Tasks
+   const tasksToAddToHabitica = []
+
+   // Fetch the tasks from Habitica & Todoist
    const habiticaDueTasks = await getHabiticaTodoistTasks(habiticaApi)
-   const HabiticaDueTasksMap = indexById.habitica(habiticaDueTasks)
-
-   // Get T Todo Task for Completed and Un-completed
    const uncompleted = await todoistApi.getTodoistTasks()
    const completed = await todoistApi.getCompletedTodoistTasks()
+
+   // Create Maps for Habitica task and Todoiest Tasks
+   const HabiticaDueTasksMap = indexById.habitica(habiticaDueTasks)
    const uncompletedMap = indexById.todoist(uncompleted)
 
-   // For completed task, check them off on Habitica
+   // For completed task, mark them off as completed in Habitica
    for (const task of completed) {
       const { task_id: id } = task
       const habiticaTask = HabiticaDueTasksMap[id]
 
       if (habiticaTask) {
-         markCompleteHabiticaStack.push(habiticaTask)
+         await habiticaApi.markComplete(habiticaTask)
       }
    }
 
    for (const task of uncompleted) {
-      // Does it Need to be Created on Habitica?
-      if (!HabiticaDueTasksMap[task.id]) {
-         addToHabiticaStack.push(task)
+      const habiticaTask = HabiticaDueTasksMap[task.id]
+
+      // Does it Need to be Created on Habitica? (Send as one api request)
+      if (!habiticaTask) {
+         tasksToAddToHabitica.push(task)
       }
       // Does the task need to be updated on Habitica.
-      else if (task.content !== HabiticaDueTasksMap[task.id].text) {
-         updateHabiticaStack.push({
+      else if (task.content !== habiticaTask.text) {
+         await habiticaApi.updateTasks({
             id: HabiticaDueTasksMap[task.id].id,
             text: task.content,
          })
       }
    }
 
-   // Find the Habitica Task that need to be removed
+   // Find the Habitica Task that need to be removed & Delete them
    for (const task of habiticaDueTasks) {
-      if (!uncompletedMap[task.notes]) {
-         removeHabiticaStack.push(task)
+      const todoistTask = uncompletedMap[task.notes]
+
+      if (!todoistTask) {
+         await habiticaApi.deleteTask(task)
       }
    }
 
-   //--// Do updates on habitica
-   // Add Task to Haitica
-   if (addToHabiticaStack.length > 0) {
-      await habiticaApi.addTasks(addToHabiticaStack)
-   }
-   // Mark Haitica Taslk as completed
-   for (const task of markCompleteHabiticaStack) {
-      await habiticaApi.markComplete(task)
-   }
-   // Delete Task on Habitica of task that are no longer on Todoiest (That have not been completed.)
-   for (const task of removeHabiticaStack) {
-      await habiticaApi.deleteTask(task)
-   }
-   // synce task text/content from Todoist task to Habitica task
-   for (const task of updateHabiticaStack) {
-      await habiticaApi.updateTasks(task)
+   // Add Task to Habitica
+   if (tasksToAddToHabitica.length > 0) {
+      await habiticaApi.addTasks(tasksToAddToHabitica)
    }
 }
 
