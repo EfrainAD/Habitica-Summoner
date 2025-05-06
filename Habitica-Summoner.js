@@ -11,6 +11,7 @@ const todoistApiKey = process.env.TODOIST_API_KEY
 
 function logError(response) {
    console.log('Error fetching Habitica tasks:', response.statusText)
+   console.log('Errors array:', response.errors)
    console.log('response', response)
 }
 
@@ -194,7 +195,7 @@ function createHabiticaApi() {
          rateLimiter.update(response.headers)
 
          const data = await response.json()
-         return data
+         return data.data
       } else {
          logError(response)
       }
@@ -220,10 +221,11 @@ function createHabiticaApi() {
 
    // Habitica - GET = Todoist Tag on Habitica
    async function getTag(name = TODOIST_TAG) {
-      await rateLimiter.wait()
       if (todoistTag) {
          return todoistTag
       }
+
+      await rateLimiter.wait()
 
       const response = await fetch(habiticaUrls.getTags, {
          method: 'GET',
@@ -303,7 +305,11 @@ async function run() {
       const habiticaTask = HabiticaDueTasksMap[id]
 
       if (habiticaTask) {
-         await habiticaApi.markComplete(habiticaTask)
+         const success = await habiticaApi.markComplete(habiticaTask)
+         if (success)
+            console.log(
+               `Task Marked Completed: id: ${habiticaTask.id}, text: ${habiticaTask.text}`
+            )
       }
    }
 
@@ -316,10 +322,15 @@ async function run() {
       }
       // Does the task need to be updated on Habitica.
       else if (task.content !== habiticaTask.text) {
-         await habiticaApi.updateTasks({
+         const updatedTask = await habiticaApi.updateTasks({
             id: HabiticaDueTasksMap[task.id].id,
             text: task.content,
          })
+
+         if (updatedTask)
+            console.log(
+               `Task Updated: id: ${updatedTask.id}, ${habiticaTask.text} TO ${updatedTask.text}`
+            )
       }
    }
 
@@ -328,13 +339,18 @@ async function run() {
       const todoistTask = uncompletedMap[task.notes]
 
       if (!todoistTask) {
-         await habiticaApi.deleteTask(task)
+         const success = await habiticaApi.deleteTask(task)
+         if (success)
+            console.log(`Task Deleted: id: ${task.id}, text: ${task.text}`)
       }
    }
 
    // Add Task to Habitica
    if (tasksToAddToHabitica.length > 0) {
-      await habiticaApi.addTasks(tasksToAddToHabitica)
+      const data = await habiticaApi.addTasks(tasksToAddToHabitica)
+      if (data) {
+         console.log('Tasks added:', data)
+      }
    }
 }
 
