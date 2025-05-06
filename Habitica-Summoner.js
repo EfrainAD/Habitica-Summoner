@@ -9,6 +9,11 @@ const HabiticaXClient = process.env.HABITICA_X_CLIENT
 // ENV - Todoist Auth
 const todoistApiKey = process.env.TODOIST_API_KEY
 
+function logError(response) {
+   console.log('Error fetching Habitica tasks:', response.statusText)
+   console.log('response', response)
+}
+
 function createHabiticaRateLimiter() {
    let requestLimitRemaining = null
    let requestLimitReset = null
@@ -125,7 +130,7 @@ function createHabiticaApi() {
          const data = await response.json()
          return data.data
       } else {
-         console.log('Error fetching Habitica tasks:', response.statusText)
+         logError(response)
       }
    }
 
@@ -142,7 +147,7 @@ function createHabiticaApi() {
 
          return { success: true }
       } else {
-         console.log('Error fetching Habitica tasks:', response.statusText)
+         logError(response)
       }
    }
 
@@ -159,7 +164,7 @@ function createHabiticaApi() {
 
          return { success: true }
       } else {
-         console.log('Error fetching Habitica tasks:', response.statusText)
+         logError(response)
       }
    }
 
@@ -191,7 +196,7 @@ function createHabiticaApi() {
          const data = await response.json()
          return data
       } else {
-         console.log('Error fetching Habitica tasks:', response.statusText)
+         logError(response)
       }
    }
 
@@ -209,7 +214,7 @@ function createHabiticaApi() {
          const data = await response.json()
          return data.data
       } else {
-         console.log('Error fetching Habitica tasks:', response.statusText)
+         logError(response)
       }
    }
 
@@ -234,7 +239,7 @@ function createHabiticaApi() {
 
          return todoistTag
       } else {
-         console.log('Error fetching Habitica tasks:', response.statusText)
+         logError(response)
       }
    }
 
