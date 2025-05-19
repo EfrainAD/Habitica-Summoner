@@ -51,6 +51,7 @@ function createTodoistApi() {
       'Content-Type': 'application/json',
    }
    const todoistUrls = {
+      getTask: (id) => `https://api.todoist.com/rest/v2/tasks/${id}`,
       getUncompletedTasks: `https://api.todoist.com/rest/v2/tasks`,
       getCompletedTasks: 'https://api.todoist.com/sync/v9/completed/get_all',
    }
@@ -58,6 +59,25 @@ function createTodoistApi() {
    // Todoist - GET = get all Due Tasks
    async function getTodoistTasks() {
       const response = await fetch(todoistUrls.getUncompletedTasks, {
+         method: 'GET',
+         headers: todoistHeaders,
+      })
+
+      if (response.ok) {
+         const data = await response.json()
+         return data
+      } else {
+         console.error(
+            'Todoist API error:',
+            response.status,
+            response.statusText
+         )
+      }
+   }
+
+   // Todoist - GET = get a Task
+   async function getTodoistTask(id) {
+      const response = await fetch(todoistUrls.getTask(id), {
          method: 'GET',
          headers: todoistHeaders,
       })
@@ -94,7 +114,11 @@ function createTodoistApi() {
       }
    }
 
-   return { getTodoistTasks, getCompletedTodoistTasks }
+   return {
+      getTodoistTask,
+      getTodoistTasks,
+      getCompletedTodoistTasks,
+   }
 }
 
 function createHabiticaApi() {
