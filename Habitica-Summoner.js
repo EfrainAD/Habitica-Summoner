@@ -193,11 +193,15 @@ function createHabiticaApi() {
       }
    }
 
+   // Difficulty, options are 0.1, 1, 1.5, 2;
+   // equivalent of Trivial, Easy, Medium, Hard.
+   function convertPriority(priority) {
+      return [0.1, 1, 1.5, 2][priority - 1]
+   }
+
    // Habitica - Post = Create a Task
    async function addTasks(tasks) {
       await rateLimiter.wait()
-      const priorityArray = [0.1, 1, 1.5, 2]
-      // Difficulty, options are 0.1, 1, 1.5, 2; equivalent of Trivial, Easy, Medium, Hard.
 
       const body = []
       for (const task of tasks) {
@@ -205,7 +209,7 @@ function createHabiticaApi() {
             text: task.content,
             type: 'todo',
             tags: ['fd988064-d94b-4494-8a21-172eac28009b'],
-            priority: priorityArray[task.priority - 1],
+            priority: convertPriority(task.priority),
             notes: task.id,
          })
       }
@@ -276,6 +280,7 @@ function createHabiticaApi() {
       addTasks,
       updateTasks,
       getTag,
+      convertPriority,
    }
 }
 
