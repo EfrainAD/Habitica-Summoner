@@ -235,7 +235,7 @@ function createHabiticaApi() {
       const response = await fetch(habiticaUrls.updateTask(task.id), {
          method: 'PUT',
          headers: habiticaHeaders,
-         body: JSON.stringify({ text: task.text }),
+         body: JSON.stringify({ text: task.text, priority: task.priority }),
       })
 
       if (response.ok) {
