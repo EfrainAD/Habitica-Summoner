@@ -362,8 +362,7 @@ async function run() {
             const success = await habiticaApi.markComplete(habiticaDueTask)
             if (success) {
                console.log(
-                  `Task Marked Completed: \n\tid: ${habiticaDueTask.id}, 
-                  \n\ttext: ${habiticaDueTask.text}`
+                  `Task Marked Completed: \n\tid: ${habiticaDueTask.id},\n\ttext: ${habiticaDueTask.text}`
                )
             }
             // Is this a repeating task, so it need be added after completing
@@ -376,8 +375,7 @@ async function run() {
             success = await habiticaApi.deleteTask(habiticaDueTask)
             if (success)
                console.log(
-                  `Task Deleted: id: ${habiticaDueTask.id}, 
-                  text: ${habiticaDueTask.text}`
+                  `Task Deleted:\n\tid: ${habiticaDueTask.id},\n\ttext: ${habiticaDueTask.text}`
                )
          } else {
             // The task still on Todoist
@@ -399,7 +397,7 @@ async function run() {
 
                if (updatedTask) {
                   console.log(`Task Updated`)
-                  console.log(`\nId: ${updatedTask.id}`)
+                  console.log(`\tId: ${updatedTask.id}`)
                   console.log(`\tText: ${updatedTask.text}`)
                   console.log(`\tPriority: ${updatedTask.priority}\n`)
                }
