@@ -298,16 +298,22 @@ async function getHabiticaTodoistTasks(habiticaApi) {
 }
 
 // Tasks Todoist id is used to track/map tasks
-const indexById = {
+const mapById = {
    habitica: function (habiticaTasks) {
       return habiticaTasks.reduce((acc, task) => {
          acc[task.notes] = task
          return acc
       }, {})
    },
-   todoist: function (todoistTasks) {
+   todoistTasks: function (todoistTasks) {
       return todoistTasks.reduce((acc, task) => {
          acc[task.id] = task
+         return acc
+      }, {})
+   },
+   todoistCompleteTable: function (completeTable) {
+      return completeTable.reduce((acc, row) => {
+         acc[row.task_id] = row
          return acc
       }, {})
    },
@@ -321,56 +327,84 @@ async function run() {
 
    // Fetch the tasks from Habitica & Todoist
    const habiticaDueTasks = await getHabiticaTodoistTasks(habiticaApi)
-   const uncompleted = await todoistApi.getTodoistTasks()
+   const todoistTasks = await todoistApi.getTodoistTasks()
    const completed = await todoistApi.getCompletedTodoistTasks()
 
    // Create Maps for Habitica task and Todoiest Tasks
-   const HabiticaDueTasksMap = indexById.habitica(habiticaDueTasks)
-   const uncompletedMap = indexById.todoist(uncompleted)
+   const HabiticaDueTasksMap = mapById.habitica(habiticaDueTasks)
+   const uncompletedMap = mapById.todoistTasks(todoistTasks)
+   const completedMap = mapById.todoistCompleteTable(completed)
 
-   // For completed task, mark them off as completed in Habitica
-   for (const task of completed) {
-      const { task_id: id } = task
-      const habiticaTask = HabiticaDueTasksMap[id]
+   // Does it Need to be Created on Habitica?
+   for (const todoistTask of todoistTasks) {
+      const habiticaTask = HabiticaDueTasksMap[todoistTask.id]
 
-      if (habiticaTask) {
-         const success = await habiticaApi.markComplete(habiticaTask)
-         if (success)
-            console.log(
-               `Task Marked Completed: id: ${habiticaTask.id}, text: ${habiticaTask.text}`
-            )
-      }
-   }
-
-   for (const task of uncompleted) {
-      const habiticaTask = HabiticaDueTasksMap[task.id]
-
-      // Does it Need to be Created on Habitica? (Send as one api request)
       if (!habiticaTask) {
-         tasksToAddToHabitica.push(task)
-      }
-      // Does the task need to be updated on Habitica.
-      else if (task.content !== habiticaTask.text) {
-         const updatedTask = await habiticaApi.updateTasks({
-            id: HabiticaDueTasksMap[task.id].id,
-            text: task.content,
-         })
-
-         if (updatedTask)
-            console.log(
-               `Task Updated: id: ${updatedTask.id}, ${habiticaTask.text} TO ${updatedTask.text}`
-            )
+         tasksToAddToHabitica.push(todoistTask)
       }
    }
 
-   // Find the Habitica Task that need to be removed & Delete them
-   for (const task of habiticaDueTasks) {
-      const todoistTask = uncompletedMap[task.notes]
+   for (const habiticaDueTask of habiticaDueTasks) {
+      const todoistId = habiticaDueTask.notes
+      const todoistDueTask = uncompletedMap[todoistId]
+      const completeRow = completedMap[todoistId]
 
-      if (!todoistTask) {
-         const success = await habiticaApi.deleteTask(task)
-         if (success)
-            console.log(`Task Deleted: id: ${task.id}, text: ${task.text}`)
+      // Is there a completed table for this Habitica task?
+      if (completeRow) {
+         const habiticaCreatedAT = new Date(habiticaDueTask.createdAt)
+         const todoistCompletedAT = new Date(completeRow.completed_at)
+
+         // Does this need to be marked complete?
+         if (todoistCompletedAT > habiticaCreatedAT) {
+            const todoistTask = await todoistApi.getTodoistTask(todoistId)
+            const isRecurring = todoistTask.due?.is_recurring
+
+            const success = await habiticaApi.markComplete(habiticaDueTask)
+            if (success) {
+               console.log(
+                  `Task Marked Completed: \n\tid: ${habiticaDueTask.id}, 
+                  \n\ttext: ${habiticaDueTask.text}`
+               )
+            }
+            // Is this a repeating task, so it need be added after completing
+            if (isRecurring) tasksToAddToHabitica.push(todoistTask)
+         }
+      } else {
+         // This task has not been completed
+         // Has it been removed from Todoist, remove it.
+         if (!todoistDueTask) {
+            success = await habiticaApi.deleteTask(habiticaDueTask)
+            if (success)
+               console.log(
+                  `Task Deleted: id: ${habiticaDueTask.id}, 
+                  text: ${habiticaDueTask.text}`
+               )
+         } else {
+            // The task still on Todoist
+            // Does it need to updating on Habitica?
+            const todoistTaskPriority = habiticaApi.convertPriority(
+               todoistDueTask.priority
+            )
+            const habiticaTaskPriority = habiticaDueTask.priority
+
+            if (
+               todoistDueTask.content !== habiticaDueTask.text ||
+               todoistTaskPriority !== habiticaTaskPriority
+            ) {
+               const updatedTask = await habiticaApi.updateTasks({
+                  id: habiticaDueTask.id,
+                  text: todoistDueTask.content,
+                  priority: todoistTaskPriority,
+               })
+
+               if (updatedTask) {
+                  console.log(`Task Updated`)
+                  console.log(`\nId: ${updatedTask.id}`)
+                  console.log(`\tText: ${updatedTask.text}`)
+                  console.log(`\tPriority: ${updatedTask.priority}\n`)
+               }
+            }
+         }
       }
    }
 
